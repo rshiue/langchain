@@ -24,7 +24,7 @@ GITHUB_URL_LANGCHAIN = r"https://github.com/langchain-ai/langchain/releases/tag/
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s [%(levelname)s] %(message)s")
 logger = logging.getLogger("demo")
 # print the log to file, rotating every 1MB
-handler = logging.FileHandler("langchain-demo.log", mode="w")
+handler = logging.FileHandler("langchain-demo.log", mode="a")
 handler.setFormatter(logging.Formatter("%(asctime)s %(name)s [%(levelname)s] %(message)s"))
 logger.addHandler(handler)
 
