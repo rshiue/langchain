@@ -22,7 +22,13 @@ OPENAI_API_KEY = environ.get("OPENAI_API_KEY")
 GITHUB_URL_LANGCHAIN = r"https://github.com/langchain-ai/langchain/releases/tag/"
 
 logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s [%(levelname)s] %(message)s")
-logger = logging.getLogger("LangChain Demo")
+logger = logging.getLogger("demo")
+# print the log to file, rotating every 1MB
+handler = logging.FileHandler("langchain-demo.log", mode="w")
+handler.setFormatter(logging.Formatter("%(asctime)s %(name)s [%(levelname)s] %(message)s"))
+logger.addHandler(handler)
+
+
 
 def get_changelogs():
     """read a local file `tags.md`. line by line, save as a list"""
@@ -40,7 +46,7 @@ def get_changelogs():
             tag = line.strip()
             url_tags.append(f"{GITHUB_URL_LANGCHAIN}" + tag)
 
-    logger.info("\n".join(url_tags))
+    logger.debug("\n".join(url_tags))
     import requests
     collection = []
     # make dir at `./tag_pages/`
@@ -65,14 +71,14 @@ def get_changelogs():
                 content = content.strip()
                 # remove duplicated line breaks: `\n`
                 content = "\n".join([line for line in content.split("\n") if line.strip() != ""])
-                logger.info(content[:100])
+                logger.debug(content[:100])
                 collection.append(content)
             
-            logger.info(f"[cached]loading content from {url}")
+            logger.debug(f"[cached]loading content from {url}")
             
         else: 
             
-            logger.info(f"loading content from remote: {url}")
+            logger.debug(f"loading content from remote: {url}")
             response = requests.get(url)
             
             # convert html to plain text, using `BeautifulSoup`
@@ -88,21 +94,20 @@ def get_changelogs():
 
     return collection
     
-def main():
+def main(question):
 
     content = get_changelogs()
     
     logger.debug(f"content: {content}")
 
     logger.info("preparing vectorstore ... ")
-    if False and "faiss.index" in os.listdir():
+    embedding = OpenAIEmbeddings()
+
+    if "faiss.index" in os.listdir():
         from langchain.vectorstores.utils import DistanceStrategy
         logger.info(f"Found existed vectorstore.")
-        vectorstore = FAISS.load_local( "./faiss.index", OpenAIEmbeddings(), distance_strategy=DistanceStrategy.COSINE)
+        vectorstore = FAISS.load_local( "./faiss.index", embedding, distance_strategy=DistanceStrategy.COSINE)
     else:
-
-        embedding = OpenAIEmbeddings()
-        
         text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=32)
         docs = []
         for item in content:
@@ -113,16 +118,10 @@ def main():
         )
         vectorstore.save_local("faiss.index")
 
-    QUESTION = """what is the major system design changes in these versions?"""
-
-    # retreived_docs = vectorstore.similarity_search(QUESTION)
-
     # logger.info(f"retreived_docs: {retreived_docs[0].page_content}")
 
     retriever = vectorstore.as_retriever()
-    # r_docs = retriever.invoke(QUESTION)
-    # logger.info(f"r_docs: {r_docs[0].page_content}")
-
+    
     from langchain import hub
 
     prompt = hub.pull("rlm/rag-prompt")
@@ -143,18 +142,25 @@ def main():
         | StrOutputParser()
     )
 
-    result = rag_chain.invoke(QUESTION)
+    result = rag_chain.invoke(question)
+    logger.info(result)
 
-
-    print(result)
+    print("\n\n")
+    console = Console(width=80)
+    console.print(result, style="green on white")
 
     
 
     
 
 if __name__ == "__main__":
-    
     assert OPENAI_API_KEY is not None, "OpenAI API key is not set"
+    import sys
+    args = sys.argv[1:]
+    q = " ".join(args)
+    if len(q) == 0:
+        print("Usage: python demo.py <question>")
+        sys.exit(1)
+    else:
+        main(q)
 
-    
-    main()
