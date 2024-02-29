@@ -28,8 +28,6 @@ handler = logging.FileHandler("langchain-demo.log", mode="a")
 handler.setFormatter(logging.Formatter("%(asctime)s %(name)s [%(levelname)s] %(message)s"))
 logger.addHandler(handler)
 
-
-
 def get_changelogs():
     """read a local file `tags.md`. line by line, save as a list"""
     url_tags = []
@@ -37,7 +35,7 @@ def get_changelogs():
         lines = f.readlines()
         import math
         LIMIT = math.inf
-        LIMIT = 100
+        # LIMIT = 10
         count = 0
         for line in lines:
             if count >= LIMIT:
@@ -94,20 +92,18 @@ def get_changelogs():
 
     return collection
     
-def main(question):
-
-    content = get_changelogs()
-    
-    logger.debug(f"content: {content}")
+def main(question, force_rebuild=False):
 
     logger.info("preparing vectorstore ... ")
     embedding = OpenAIEmbeddings()
 
-    if "faiss.index" in os.listdir():
+    if force_rebuild is False and "faiss.index" in os.listdir():
         from langchain.vectorstores.utils import DistanceStrategy
-        logger.info(f"Found existed vectorstore.")
+        logger.info(f"Found existed vectorstore. We'll use this local store.")
         vectorstore = FAISS.load_local( "./faiss.index", embedding, distance_strategy=DistanceStrategy.COSINE)
     else:
+        content = get_changelogs()
+        logger.debug(f"content: {content}")
         text_splitter = CharacterTextSplitter(chunk_size=1000, chunk_overlap=32)
         docs = []
         for item in content:
@@ -148,19 +144,18 @@ def main(question):
     print("\n\n")
     console = Console(width=80)
     console.print(result, style="green on white")
+    console.print("\n")
 
     
-
-    
-
 if __name__ == "__main__":
     assert OPENAI_API_KEY is not None, "OpenAI API key is not set"
     import sys
-    args = sys.argv[1:]
-    q = " ".join(args)
-    if len(q) == 0:
-        print("Usage: python demo.py <question>")
+    message = sys.argv[1]
+    is_force_rebuild = sys.argv[2] if len(sys.argv) > 2 else False
+    if len(message) == 0:
+        c = Console()
+        c.print("Please enter your question. E.g. python demo.py \"What is the v0.0.102 doing?\"", style="bold green")
         sys.exit(1)
     else:
-        main(q)
+        main(question=message, force_rebuild=is_force_rebuild)
 
