@@ -1,14 +1,9 @@
 
 import os
-from langchain_community.document_loaders import UnstructuredHTMLLoader
-from langchain_community.document_loaders import BSHTMLLoader
-from langchain_community.document_loaders import UnstructuredMarkdownLoader
 from langchain.text_splitter import CharacterTextSplitter
-from operator import itemgetter
 
 from langchain_community.vectorstores import FAISS
 from langchain_core.output_parsers import StrOutputParser
-from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import RunnableLambda, RunnablePassthrough
 from langchain_openai import ChatOpenAI, OpenAIEmbeddings
 from os import environ
